@@ -52,6 +52,35 @@ class LoadsPage extends StatelessWidget {
     }
   }
 
+  Future<void> openExport(BuildContext context) async {
+    final pdf = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.table_chart_outlined),
+              title: const Text('Excel (XLSX)'),
+              subtitle: const Text('Data transaksi + total, siap diolah.'),
+              onTap: () => Navigator.pop(sheet, false),
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_outlined),
+              title: const Text('PDF'),
+              subtitle: const Text('Laporan siap cetak atau dibagikan.'),
+              onTap: () => Navigator.pop(sheet, true),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (pdf == null || !context.mounted) return;
+    await export(context, pdf);
+  }
+
   @override
   Widget build(BuildContext context) {
     final numbered = <(int, LoadItem)>[];
@@ -91,20 +120,10 @@ class LoadsPage extends StatelessWidget {
           style: Theme.of(context).textTheme.labelLarge,
         ),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          children: [
-            OutlinedButton.icon(
-              onPressed: loads.isEmpty ? null : () => export(context, false),
-              icon: const Icon(Icons.table_chart_outlined),
-              label: const Text('Excel XLSX'),
-            ),
-            OutlinedButton.icon(
-              onPressed: loads.isEmpty ? null : () => export(context, true),
-              icon: const Icon(Icons.picture_as_pdf_outlined),
-              label: const Text('PDF'),
-            ),
-          ],
+        OutlinedButton.icon(
+          onPressed: loads.isEmpty ? null : () => openExport(context),
+          icon: const Icon(Icons.ios_share),
+          label: const Text('Ekspor'),
         ),
         const SizedBox(height: 12),
         SectionCard(

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../models/load_item.dart';
@@ -56,14 +57,34 @@ class _LoadEditorState extends State<LoadEditor> {
   }
 
   Future<void> pickTime() async {
-    final picked = await showTimePicker(
+    var picked = stamp;
+    final confirmed = await showDialog<bool>(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(stamp),
-      helpText: 'Waktu transaksi',
-      cancelText: 'Batal',
-      confirmText: 'Pilih',
+      builder: (context) => AlertDialog(
+        title: const Text('Waktu transaksi'),
+        content: SizedBox(
+          height: 200,
+          width: 240,
+          child: CupertinoDatePicker(
+            mode: CupertinoDatePickerMode.time,
+            use24hFormat: true,
+            initialDateTime: stamp,
+            onDateTimeChanged: (value) => picked = value,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Pilih'),
+          ),
+        ],
+      ),
     );
-    if (picked != null && mounted) {
+    if (confirmed == true && mounted) {
       setState(() {
         stamp = DateTime(
           stamp.year,
