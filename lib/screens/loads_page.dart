@@ -4,36 +4,45 @@ import '../models/load_item.dart';
 import '../services/calculation.dart';
 import '../services/date_format.dart';
 import '../services/report_export.dart';
-import '../widgets/date_selector.dart';
 import '../widgets/load_card.dart';
+import '../widgets/range_selector.dart';
 import '../widgets/section_card.dart';
 
 class LoadsPage extends StatelessWidget {
   const LoadsPage({
     super.key,
     required this.loads,
-    required this.date,
-    required this.days,
-    required this.onDate,
-    required this.onDays,
+    required this.start,
+    required this.end,
+    required this.onRange,
     required this.onEdit,
     required this.onDelete,
   });
   final List<LoadItem> loads;
-  final DateTime date;
-  final int days;
-  final ValueChanged<DateTime> onDate;
-  final ValueChanged<int> onDays;
+  final DateTime start, end;
+  final void Function(DateTime start, DateTime end) onRange;
   final ValueChanged<LoadItem> onEdit;
   final Future<void> Function(LoadItem) onDelete;
 
-  static const presets = {1: '1 hari', 2: '2 hari', 7: '7 hari', 30: '30 hari'};
+  int get days => end.difference(start).inDays + 1;
 
-  DateTime get start => DateTime(date.year, date.month, date.day - (days - 1));
+  String get label => formattedRange(start, end);
 
-  String get label => days == 1
-      ? formattedDate(date)
-      : '${formattedDate(start)} – ${formattedDate(date)}';
+  static DateTime _dayOf(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  List<(String, DateTime, DateTime)> get presets {
+    final today = _dayOf(DateTime.now());
+    return [
+      ('Hari ini', today, today),
+      ('7 hari', today.subtract(const Duration(days: 6)), today),
+      ('30 hari', today.subtract(const Duration(days: 29)), today),
+      ('Bulan ini', DateTime(today.year, today.month), today),
+    ];
+  }
 
   Future<void> export(BuildContext context, bool pdf) async {
     final box = context.findRenderObject() as RenderBox;
@@ -102,24 +111,15 @@ class LoadsPage extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final entry in presets.entries)
+            for (final (title, from, to) in presets)
               ChoiceChip(
-                label: Text(entry.value),
-                selected: days == entry.key,
-                onSelected: (_) => onDays(entry.key),
+                label: Text(title),
+                selected: _sameDay(start, from) && _sameDay(end, to),
+                onSelected: (_) => onRange(from, to),
               ),
           ],
         ),
-        DateSelector(
-          date: date,
-          label: days == 1 ? 'Tanggal' : 'Tanggal akhir',
-          onChanged: onDate,
-        ),
-        Text(
-          days == 1 ? 'Menampilkan $label' : 'Rentang $label',
-          style: Theme.of(context).textTheme.labelLarge,
-        ),
-        const SizedBox(height: 12),
+        RangeSelector(start: start, end: end, onChanged: onRange),
         OutlinedButton.icon(
           onPressed: loads.isEmpty ? null : () => openExport(context),
           icon: const Icon(Icons.ios_share),

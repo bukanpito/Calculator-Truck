@@ -28,21 +28,20 @@ class _HomePageState extends State<HomePage> {
   bool busy = false;
   String? error;
   List<LoadItem> todayLoads = [], selectedLoads = [];
-  DateTime selectedDate = DateTime.now();
-  int rangeDays = 1;
+  DateTime rangeStart = _today();
+  DateTime rangeEnd = _today();
   bool dashboardReset = false;
 
-  DateTime get rangeStart => DateTime(
-    selectedDate.year,
-    selectedDate.month,
-    selectedDate.day - (rangeDays - 1),
-  );
+  static DateTime _today() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
+  }
 
   Future<void> refreshLoads() async {
     final repo = LoadRepository(repository!.db);
     final today = await repo.forDate(localDate(DateTime.now()));
     final resetId = await repo.resetId(localDate(DateTime.now()));
-    final selected = await repo.forRange(rangeStart, selectedDate);
+    final selected = await repo.forRange(rangeStart, rangeEnd);
     if (mounted) {
       setState(() {
         dashboardReset = resetId != null;
@@ -52,15 +51,17 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> changeRange({DateTime? date, int? days}) async {
+  Future<void> changeRange(DateTime start, DateTime end) async {
     final messenger = ScaffoldMessenger.of(context);
+    final from = DateTime(start.year, start.month, start.day);
+    final to = DateTime(end.year, end.month, end.day);
     setState(() {
-      if (date != null) selectedDate = date;
-      if (days != null) rangeDays = days;
+      rangeStart = from;
+      rangeEnd = to.isBefore(from) ? from : to;
     });
     try {
       final rows = await LoadRepository(repository!.db)
-          .forRange(rangeStart, selectedDate);
+          .forRange(rangeStart, rangeEnd);
       if (mounted) setState(() => selectedLoads = rows);
     } catch (_) {
       if (mounted) {
@@ -275,10 +276,9 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           loads: selectedLoads,
-                          date: selectedDate,
-                          days: rangeDays,
-                          onDate: (date) => changeRange(date: date),
-                          onDays: (days) => changeRange(days: days),
+                          start: rangeStart,
+                          end: rangeEnd,
+                          onRange: changeRange,
                         ),
                         MaterialsPage(
                           materials: materials,

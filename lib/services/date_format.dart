@@ -45,3 +45,21 @@ String shortDate(String isoDate) {
 String clockText(DateTime date) =>
     '${date.hour.toString().padLeft(2, '0')}:'
     '${date.minute.toString().padLeft(2, '0')}';
+
+/// Compact range label: `21 Oktober 2026`, `15–21 Oktober 2026`, or
+/// `28 Sep – 3 Okt 2026`.
+String formattedRange(DateTime start, DateTime end) {
+  if (start.year == end.year &&
+      start.month == end.month &&
+      start.day == end.day) {
+    return formattedDate(start);
+  }
+  if (start.year == end.year && start.month == end.month) {
+    return '${start.day}–${end.day} ${monthNames[end.month - 1]} ${end.year}';
+  }
+  if (start.year == end.year) {
+    return '${start.day} ${shortMonthNames[start.month - 1]} – '
+        '${end.day} ${shortMonthNames[end.month - 1]} ${end.year}';
+  }
+  return '${formattedDate(start)} – ${formattedDate(end)}';
+}
