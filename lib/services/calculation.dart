@@ -32,8 +32,12 @@ int parseMoney(String text, {bool optional = false}) {
   return amount.toInt();
 }
 
-String rupiah(int value) =>
-    'Rp${value.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}';
+String moneyText(int value) => value.toString().replaceAllMapped(
+  RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+  (m) => '${m[1]}.',
+);
+
+String rupiah(int value) => 'Rp${moneyText(value)}';
 
 String volumeText(int units) {
   final fraction = (units % volumeScale)
@@ -51,6 +55,8 @@ class Calculation {
     this.shipping = 0,
     this.discount = 0,
     this.salePrice,
+    this.ritCost,
+    this.destination = '',
   }) {
     if (volume <= 0 ||
         volume > 1000000 * volumeScale ||
@@ -60,6 +66,7 @@ class Calculation {
           shipping,
           discount,
           ?salePrice,
+          ?ritCost,
         ].any((n) => n < 0 || n > 1000000000)) {
       throw const FormatException('Nilai perhitungan di luar batas.');
     }
@@ -69,13 +76,21 @@ class Calculation {
   }
   final int volume, price, extra, shipping, discount;
   final int? salePrice;
+  final int? ritCost;
+  final String destination;
+  int get costPerM3 => ritCost == null
+      ? price
+      : ((BigInt.from(ritCost!) * BigInt.from(volumeScale) +
+                    BigInt.from(volume ~/ 2)) ~/
+                BigInt.from(volume))
+            .toInt();
 
   int multiply(int price) =>
       ((BigInt.from(volume) * BigInt.from(price) +
                   BigInt.from(volumeScale ~/ 2)) ~/
               BigInt.from(volumeScale))
           .toInt();
-  int get subtotal => multiply(price);
+  int get subtotal => ritCost ?? multiply(price);
   int get total => subtotal + extra + shipping - discount;
   int? get sales => salePrice == null ? null : multiply(salePrice!);
   int? get profit => sales == null ? null : sales! - total;
