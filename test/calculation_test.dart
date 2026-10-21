@@ -12,6 +12,21 @@ void main() {
     expect(volumeText(value.volume), '24,17');
     expect(value.profit, isNull);
   });
+  test('Modal per rit: 8.200.000 / 26,46 m³', () {
+    final value = Calculation(
+      volume: parseVolume('26,46'),
+      price: 0,
+      ritCost: parseMoney('8.200.000'),
+      salePrice: parseMoney('350.000'),
+      destination: 'Proyek Bekasi',
+    );
+    expect(value.costPerM3, 309902);
+    expect(value.subtotal, 8200000);
+    expect(value.total, 8200000);
+    expect(value.sales, 9261000);
+    expect(value.profit, 1061000);
+    expect(value.destination, 'Proyek Bekasi');
+  });
   test('Biaya, diskon dan keuntungan tidak dihitung ganda', () {
     final value = Calculation(
       volume: parseVolume('2.5'),

@@ -6,7 +6,6 @@ class SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-    elevation: 0,
     child: Padding(padding: const EdgeInsets.all(20), child: child),
   );
 }

@@ -2,40 +2,64 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/calculation.dart';
+import '../services/money_input_formatter.dart';
+import '../models/material_item.dart';
 import '../widgets/calculation_summary.dart';
 import '../widgets/section_card.dart';
 
 class CalculatorPage extends StatefulWidget {
-  const CalculatorPage({super.key, required this.materials});
-  final List<String> materials;
+  const CalculatorPage({
+    super.key,
+    required this.materials,
+    required this.onSave,
+  });
+  final Future<void> Function(String, Calculation) onSave;
+  final List<MaterialItem> materials;
   @override
   State<CalculatorPage> createState() => _CalculatorPageState();
 }
 
 class _CalculatorPageState extends State<CalculatorPage> {
   final form = GlobalKey<FormState>();
-  final fields = List.generate(4, (_) => TextEditingController());
-  String? material;
+  final fields = List.generate(5, (_) => TextEditingController());
+  int? materialId;
+  String? get material =>
+      widget.materials.where((m) => m.id == materialId).firstOrNull?.name;
+
+  void selectMaterial(MaterialItem? item) {
+    materialId = item?.id;
+    fields[2].text = item?.price == null ? '' : moneyText(item!.price!);
+  }
+
   Calculation? result;
   String? error;
+  bool saving = false;
+  bool saved = false;
   static const labels = [
     'Volume muatan',
-    'Harga modal per m³',
-    'Biaya tambahan',
+    'Modal per rit',
     'Harga jual per m³ (opsional)',
+    'Biaya tambahan',
+    'Lokasi kirim',
   ];
 
   @override
   void initState() {
     super.initState();
-    material = widget.materials.firstOrNull;
+    selectMaterial(widget.materials.firstOrNull);
   }
 
   @override
   void didUpdateWidget(covariant CalculatorPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!widget.materials.contains(material)) {
-      material = widget.materials.firstOrNull;
+    final selected = widget.materials
+        .where((m) => m.id == materialId)
+        .firstOrNull;
+    final previous = oldWidget.materials
+        .where((m) => m.id == materialId)
+        .firstOrNull;
+    if (selected == null || selected != previous) {
+      selectMaterial(selected ?? widget.materials.firstOrNull);
       result = null;
       error = null;
     }
@@ -50,6 +74,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   void clearResult() => setState(() {
+    saved = false;
     result = null;
     error = null;
   });
@@ -58,17 +83,18 @@ class _CalculatorPageState extends State<CalculatorPage> {
     FocusScope.of(context).unfocus();
     if (!form.currentState!.validate()) return;
     try {
-      final amounts = [
-        for (var i = 1; i <= 3; i++)
-          parseMoney(fields[i].text, optional: i > 1),
-      ];
       final value = Calculation(
         volume: parseVolume(fields[0].text),
-        price: amounts[0],
-        extra: amounts[1],
-        salePrice: fields[3].text.trim().isEmpty ? null : amounts[2],
+        price: 0,
+        ritCost: parseMoney(fields[1].text),
+        salePrice: fields[2].text.trim().isEmpty
+            ? null
+            : parseMoney(fields[2].text),
+        extra: parseMoney(fields[3].text, optional: true),
+        destination: fields[4].text.trim(),
       );
       setState(() {
+        saved = false;
         result = value;
         error = null;
       });
@@ -82,7 +108,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
 
   void example() {
     form.currentState?.reset();
-    const values = ['24,17', '370.000', '0', ''];
+    const values = ['26,46', '8.200.000', '350.000', '0', 'Proyek Bekasi'];
     for (var i = 0; i < values.length; i++) {
       fields[i].text = values[i];
     }
@@ -112,121 +138,166 @@ class _CalculatorPageState extends State<CalculatorPage> {
   }
 
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(16),
-    children: [
-      Text(
-        'Kalkulasi muatan',
-        style: Theme.of(context).textTheme.headlineSmall,
-      ),
-      const Text(
-        'Isi angka sendiri atau gunakan contoh. Hasil tidak disimpan.',
-      ),
-      TextButton(
-        onPressed: example,
-        child: const Text('Isi contoh 24,17 × 370.000'),
-      ),
-      SectionCard(
-        child: Form(
-          key: form,
-          child: Column(
-            children: [
-              DropdownButtonFormField<String>(
-                key: ValueKey(material),
-                initialValue: material,
-                decoration: const InputDecoration(labelText: 'Material'),
-                items: [
-                  for (final name in widget.materials)
-                    DropdownMenuItem(value: name, child: Text(name)),
-                ],
-                onChanged: (value) {
-                  material = value;
-                  clearResult();
-                },
-                validator: (value) => value == null
-                    ? 'Tambahkan material di menu Material.'
-                    : null,
-              ),
-              const SizedBox(height: 16),
-              for (var i = 0; i < labels.length; i++) ...[
-                TextFormField(
-                  key: ValueKey('input_$i'),
-                  controller: fields[i],
-                  keyboardType: TextInputType.numberWithOptions(
-                    decimal: i == 0,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: labels[i],
-                    suffixText: i == 0 ? 'm³' : null,
-                    prefixText: i == 0 ? null : 'Rp ',
-                    helperText: i == 0
-                        ? 'Contoh: 24,17 • maksimal 6 desimal'
-                        : (i == 1
-                              ? 'Contoh: 370000 atau 370.000'
-                              : 'Boleh kosong'),
-                  ),
-                  onChanged: (_) => clearResult(),
-                  validator: (text) {
-                    try {
-                      if (i == 0) {
-                        parseVolume(text ?? '');
-                      } else {
-                        parseMoney(text ?? '', optional: i > 1);
-                      }
-                      return null;
-                    } on FormatException catch (e) {
-                      return e.message;
-                    }
+  Widget build(BuildContext context) => AbsorbPointer(
+    absorbing: saving,
+    child: ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(
+          'Kalkulasi muatan',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const Text(
+          'Isi angka, hitung, lalu tekan Simpan Muatan untuk mencatat transaksi.',
+        ),
+        TextButton(
+          onPressed: example,
+          child: const Text('Isi contoh rit Rp8.200.000 / 26,46 m³'),
+        ),
+        SectionCard(
+          child: Form(
+            key: form,
+            child: Column(
+              children: [
+                DropdownButtonFormField<int>(
+                  key: ValueKey(materialId),
+                  initialValue: materialId,
+                  decoration: const InputDecoration(labelText: 'Material'),
+                  items: [
+                    for (final item in widget.materials)
+                      DropdownMenuItem(value: item.id, child: Text(item.name)),
+                  ],
+                  onChanged: (value) {
+                    selectMaterial(
+                      widget.materials.where((m) => m.id == value).firstOrNull,
+                    );
+                    clearResult();
                   },
+                  validator: (value) => value == null
+                      ? 'Tambahkan material di menu Material.'
+                      : null,
                 ),
                 const SizedBox(height: 16),
+                for (var i = 0; i < labels.length; i++) ...[
+                  TextFormField(
+                    key: ValueKey('input_$i'),
+                    controller: fields[i],
+                    maxLength: i == 4 ? 200 : null,
+                    keyboardType: i == 4
+                        ? TextInputType.text
+                        : TextInputType.numberWithOptions(decimal: i == 0),
+                    textCapitalization: i == 4
+                        ? TextCapitalization.sentences
+                        : TextCapitalization.none,
+                    inputFormatters: i >= 1 && i <= 3
+                        ? const [MoneyInputFormatter()]
+                        : null,
+                    decoration: InputDecoration(
+                      labelText: labels[i],
+                      suffixText: i == 0 ? 'm³' : null,
+                      prefixText: i >= 1 && i <= 3 ? 'Rp ' : null,
+                      helperText: switch (i) {
+                        0 => 'Contoh: 26,46 • maksimal 6 desimal',
+                        1 => 'Total modal satu rit, contoh 8.200.000',
+                        2 => 'Terisi dari material • boleh kosong',
+                        3 => 'Boleh kosong',
+                        _ => 'Contoh: Proyek Jatiasih',
+                      },
+                    ),
+                    onChanged: (_) => clearResult(),
+                    validator: (text) {
+                      try {
+                        if (i == 0) {
+                          parseVolume(text ?? '');
+                        } else if (i == 4) {
+                          return null;
+                        } else {
+                          parseMoney(text ?? '', optional: i == 2 || i == 3);
+                        }
+                        return null;
+                      } on FormatException catch (e) {
+                        return e.message;
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ],
-            ],
+            ),
           ),
         ),
-      ),
-      Wrap(
-        spacing: 12,
-        runSpacing: 8,
-        children: [
-          FilledButton.icon(
-            onPressed: calculate,
-            icon: const Icon(Icons.calculate_outlined),
-            label: const Text('Hitung'),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            FilledButton.icon(
+              onPressed: calculate,
+              icon: const Icon(Icons.calculate_outlined),
+              label: const Text('Hitung'),
+            ),
+            OutlinedButton(
+              onPressed: () {
+                form.currentState?.reset();
+                for (final field in fields) {
+                  field.clear();
+                }
+                clearResult();
+              },
+              child: const Text('Reset'),
+            ),
+          ],
+        ),
+        if (error != null)
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text(
+              error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ),
-          OutlinedButton(
-            onPressed: () {
-              form.currentState?.reset();
-              for (final field in fields) {
-                field.clear();
-              }
-              clearResult();
-            },
-            child: const Text('Reset'),
+        if (result != null) ...[
+          CalculationSummary(material: material!, value: result!),
+          FilledButton.icon(
+            onPressed: saving || saved
+                ? null
+                : () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    setState(() => saving = true);
+                    try {
+                      await widget.onSave(material!, result!);
+                      if (mounted) setState(() => saved = true);
+                    } catch (_) {
+                      if (mounted) {
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Muatan gagal disimpan. Coba kembali.',
+                            ),
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => saving = false);
+                    }
+                  },
+            icon: const Icon(Icons.save_outlined),
+            label: Text(
+              saving
+                  ? 'Menyimpan…'
+                  : saved
+                  ? 'Muatan tersimpan'
+                  : 'Simpan Muatan',
+            ),
+          ),
+          OutlinedButton.icon(
+            onPressed: copy,
+            icon: const Icon(Icons.copy),
+            label: const Text('Salin Hasil'),
           ),
         ],
-      ),
-      if (error != null)
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Text(
-            error!,
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
-          ),
-        ),
-      if (result != null) ...[
-        CalculationSummary(material: material!, value: result!),
-        OutlinedButton.icon(
-          onPressed: copy,
-          icon: const Icon(Icons.copy),
-          label: const Text('Salin Hasil'),
-        ),
+        const SizedBox(height: 16),
+        const SizedBox(height: 24),
       ],
-      const SizedBox(height: 16),
-      const Text(
-        'Simpan Muatan belum aktif. Database akan ditambahkan pada tahap berikutnya.',
-      ),
-      const SizedBox(height: 24),
-    ],
+    ),
   );
 }

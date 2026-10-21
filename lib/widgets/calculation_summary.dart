@@ -4,13 +4,14 @@ import '../services/calculation.dart';
 import 'section_card.dart';
 
 String calculationText(String material, Calculation value) => [
-  'MaterialTrack • hasil demo (tidak disimpan)',
+  'Material Tracker',
   'Material: $material',
   'Volume: ${volumeText(value.volume)} m³',
-  'Modal per m³: ${rupiah(value.price)}',
-  'Subtotal material: ${rupiah(value.subtotal)}',
+  if (value.ritCost != null) 'Modal per rit: ${rupiah(value.ritCost!)}',
+  'Modal per m³: ${rupiah(value.costPerM3)}',
   'Biaya tambahan: ${rupiah(value.extra)}',
   'Total modal: ${rupiah(value.total)}',
+  if (value.destination.isNotEmpty) 'Lokasi kirim: ${value.destination}',
   if (value.sales != null) ...[
     'Harga jual per m³: ${rupiah(value.salePrice!)}',
     'Total penjualan: ${rupiah(value.sales!)}',
@@ -44,9 +45,12 @@ class CalculationSummary extends StatelessWidget {
         ),
         const Divider(height: 24),
         _line('Volume muatan', '${volumeText(value.volume)} m³'),
-        _line('Harga modal / m³', rupiah(value.price)),
-        _line('Subtotal material', rupiah(value.subtotal)),
+        if (value.ritCost != null)
+          _line('Modal per rit', rupiah(value.ritCost!)),
+        _line('Modal / m³', rupiah(value.costPerM3)),
         _line('Biaya tambahan', rupiah(value.extra)),
+        if (value.destination.isNotEmpty)
+          _line('Lokasi kirim', value.destination),
         if (value.sales != null) ...[
           const Divider(height: 24),
           _line('Harga jual / m³', rupiah(value.salePrice!)),
@@ -82,7 +86,10 @@ class CalculationSummary extends StatelessWidget {
             child: Text('Isi harga jual untuk melihat estimasi keuntungan.'),
           ),
         const SizedBox(height: 12),
-        const Text('Subtotal dibulatkan ke Rupiah terdekat (setengah naik).'),
+        const Text(
+          'Total modal memakai modal per rit. Modal / m³ adalah hasil bagi '
+          'modal per rit dengan volume, dibulatkan ke Rupiah terdekat.',
+        ),
       ],
     ),
   );
