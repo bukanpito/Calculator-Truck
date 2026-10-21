@@ -26,7 +26,7 @@ class AppNavigationBar extends StatelessWidget {
 
   static const _active = Color(0xFF00412E);
   static const _inactive = Color(0xFF5F6F67);
-  static const _pill = Color(0xFF96BF8A);
+  static const _pill = Color(0xFF84A879);
 
   @override
   Widget build(BuildContext context) => Material(
@@ -36,21 +36,22 @@ class AppNavigationBar extends StatelessWidget {
     child: SafeArea(
       top: false,
       child: SizedBox(
-        height: 64,
+        height: 66,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth / items.length;
+            final pillWidth = (width - 28).clamp(52.0, 64.0);
             return Stack(
               children: [
                 Positioned(
-                  left: width * index + 16,
-                  top: 6,
-                  width: width - 32,
-                  height: 30,
+                  left: width * index + (width - pillWidth) / 2,
+                  top: 4,
+                  width: pillWidth,
+                  height: 38,
                   child: const DecoratedBox(
                     decoration: BoxDecoration(
                       color: _pill,
-                      borderRadius: BorderRadius.all(Radius.circular(15)),
+                      borderRadius: BorderRadius.all(Radius.circular(19)),
                     ),
                   ),
                 ),
@@ -87,16 +88,21 @@ class _Item extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
+    padding: const EdgeInsets.symmetric(vertical: 4),
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
-          selected ? item.selectedIcon : item.icon,
-          size: 23,
-          color: selected
-              ? AppNavigationBar._active
-              : AppNavigationBar._inactive,
+        SizedBox(
+          height: 38,
+          child: Center(
+            child: Icon(
+              selected ? item.selectedIcon : item.icon,
+              size: 21,
+              color: selected
+                  ? AppNavigationBar._active
+                  : AppNavigationBar._inactive,
+            ),
+          ),
         ),
         const SizedBox(height: 2),
         Text(
