@@ -10,7 +10,7 @@ import '../data/material_repository.dart';
 import '../data/load_repository.dart';
 import '../models/load_item.dart';
 import '../services/calculation.dart';
-import '../widgets/fade_indexed_stack.dart';
+import '../widgets/slide_indexed_stack.dart';
 import '../widgets/load_editor.dart';
 
 class HomePage extends StatefulWidget {
@@ -180,7 +180,7 @@ class _HomePageState extends State<HomePage> {
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 720),
-                    child: FadeIndexedStack(
+                    child: SlideIndexedStack(
                       index: page,
                       children: [
                         DashboardPage(
