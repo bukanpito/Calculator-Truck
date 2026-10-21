@@ -10,7 +10,7 @@ import '../data/material_repository.dart';
 import '../data/load_repository.dart';
 import '../models/load_item.dart';
 import '../services/calculation.dart';
-import '../widgets/smooth_navigation_bar.dart';
+import '../widgets/app_navigation_bar.dart';
 import '../widgets/load_editor.dart';
 
 class HomePage extends StatefulWidget {
@@ -294,29 +294,29 @@ class _HomePageState extends State<HomePage> {
               ),
       ),
       bottomNavigationBar: ready
-          ? SmoothNavigationBar(
+          ? AppNavigationBar(
               index: page,
               onChanged: (value) => setState(() => page = value),
               items: const [
-                SmoothNavItem(
+                NavItem(
                   id: 'dashboard',
                   icon: Icons.dashboard_outlined,
                   selectedIcon: Icons.dashboard,
                   label: 'Dashboard',
                 ),
-                SmoothNavItem(
+                NavItem(
                   id: 'calculator',
                   icon: Icons.calculate_outlined,
                   selectedIcon: Icons.calculate,
                   label: 'Calculator',
                 ),
-                SmoothNavItem(
+                NavItem(
                   id: 'spreadsheet',
                   icon: Icons.table_chart_outlined,
                   selectedIcon: Icons.table_chart,
                   label: 'Spreadsheet',
                 ),
-                SmoothNavItem(
+                NavItem(
                   id: 'material',
                   icon: Icons.landscape_outlined,
                   selectedIcon: Icons.landscape,

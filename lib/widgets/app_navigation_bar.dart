@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class SmoothNavItem {
-  const SmoothNavItem({
+class NavItem {
+  const NavItem({
     required this.id,
     required this.icon,
     required this.selectedIcon,
@@ -12,10 +12,9 @@ class SmoothNavItem {
   final String label;
 }
 
-/// Bottom navigation with a sliding pill. Page changes stay instant; only
-/// this bar animates.
-class SmoothNavigationBar extends StatelessWidget {
-  const SmoothNavigationBar({
+/// Static bottom navigation: selection changes instantly, no animation.
+class AppNavigationBar extends StatelessWidget {
+  const AppNavigationBar({
     super.key,
     required this.index,
     required this.onChanged,
@@ -23,7 +22,7 @@ class SmoothNavigationBar extends StatelessWidget {
   });
   final int index;
   final ValueChanged<int> onChanged;
-  final List<SmoothNavItem> items;
+  final List<NavItem> items;
 
   static const _active = Color(0xFF00412E);
   static const _inactive = Color(0xFF5F6F67);
@@ -43,9 +42,7 @@ class SmoothNavigationBar extends StatelessWidget {
             final width = constraints.maxWidth / items.length;
             return Stack(
               children: [
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 280),
-                  curve: Curves.easeOutCubic,
+                Positioned(
                   left: width * index + 16,
                   top: 6,
                   width: width - 32,
@@ -85,7 +82,7 @@ class SmoothNavigationBar extends StatelessWidget {
 
 class _Item extends StatelessWidget {
   const _Item({required this.item, required this.selected});
-  final SmoothNavItem item;
+  final NavItem item;
   final bool selected;
 
   @override
@@ -94,33 +91,24 @@ class _Item extends StatelessWidget {
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: selected ? 1 : 0),
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          builder: (context, t, _) => Icon(
-            selected ? item.selectedIcon : item.icon,
-            size: 21 + t * 2,
-            color: Color.lerp(
-              SmoothNavigationBar._inactive,
-              SmoothNavigationBar._active,
-              t,
-            ),
-          ),
+        Icon(
+          selected ? item.selectedIcon : item.icon,
+          size: 23,
+          color: selected
+              ? AppNavigationBar._active
+              : AppNavigationBar._inactive,
         ),
         const SizedBox(height: 2),
-        AnimatedDefaultTextStyle(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
+        Text(
+          item.label,
           style: TextStyle(
             fontSize: 11,
             height: 1.2,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
             color: selected
-                ? SmoothNavigationBar._active
-                : SmoothNavigationBar._inactive,
+                ? AppNavigationBar._active
+                : AppNavigationBar._inactive,
           ),
-          child: Text(item.label),
         ),
       ],
     ),
