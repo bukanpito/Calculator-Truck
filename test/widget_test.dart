@@ -24,7 +24,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 100));
     });
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(NavigationDestination, 'Material'));
+    await tester.tap(find.byKey(const ValueKey('nav_material')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Tambah material'));
     await tester.pumpAndSettle();
@@ -42,7 +42,7 @@ void main() {
     });
     await tester.pumpAndSettle();
     expect(find.text('Pasir demo'), findsOneWidget);
-    await tester.tap(find.text('Calculator'));
+    await tester.tap(find.byKey(const ValueKey('nav_calculator')));
     await tester.pumpAndSettle();
     expect(find.text('Ongkos kirim'), findsNothing);
     expect(find.text('Diskon'), findsNothing);
@@ -60,7 +60,7 @@ void main() {
     await tester.tap(find.text('Isi contoh rit Rp8.200.000 / 26,46 m³'));
     await tester.pumpAndSettle();
     expect(find.text('TOTAL MODAL'), findsOneWidget);
-    await tester.tap(find.widgetWithText(NavigationDestination, 'Material'));
+    await tester.tap(find.byKey(const ValueKey('nav_material')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Pasir demo'));
     await tester.pumpAndSettle();
@@ -77,7 +77,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 200));
     });
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Calculator'));
+    await tester.tap(find.byKey(const ValueKey('nav_calculator')));
     await tester.pumpAndSettle();
     expect(
       tester
@@ -86,7 +86,7 @@ void main() {
           .text,
       '200.000',
     );
-    await tester.tap(find.widgetWithText(NavigationDestination, 'Material'));
+    await tester.tap(find.byKey(const ValueKey('nav_material')));
     await tester.pumpAndSettle();
     await tester.drag(
       find.ancestor(
@@ -101,7 +101,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 200));
     });
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Calculator'));
+    await tester.tap(find.byKey(const ValueKey('nav_calculator')));
     await tester.pumpAndSettle();
     expect(find.text('Pasir demo'), findsNothing);
     expect(find.text('TOTAL MODAL'), findsNothing);
@@ -118,7 +118,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 100));
     });
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Calculator'));
+    await tester.tap(find.byKey(const ValueKey('nav_calculator')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Isi contoh rit Rp8.200.000 / 26,46 m³'));
     await tester.pumpAndSettle();
@@ -136,10 +136,10 @@ void main() {
       (await tester.runAsync(() => repository.db.query('loads')))!.length,
       1,
     );
-    await tester.tap(find.widgetWithText(NavigationDestination, 'Material'));
+    await tester.tap(find.byKey(const ValueKey('nav_material')));
     await tester.pumpAndSettle();
     expect(find.text('Daftar material'), findsOneWidget);
-    await tester.tap(find.text('Calculator'));
+    await tester.tap(find.byKey(const ValueKey('nav_calculator')));
     await tester.pumpAndSettle();
     expect(find.text('Rp8.200.000'), findsNWidgets(2));
     await tester.enterText(find.byKey(const ValueKey('input_0')), '2,5');

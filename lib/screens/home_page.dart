@@ -10,7 +10,7 @@ import '../data/material_repository.dart';
 import '../data/load_repository.dart';
 import '../models/load_item.dart';
 import '../services/calculation.dart';
-import '../widgets/slide_indexed_stack.dart';
+import '../widgets/smooth_navigation_bar.dart';
 import '../widgets/load_editor.dart';
 
 class HomePage extends StatefulWidget {
@@ -180,7 +180,7 @@ class _HomePageState extends State<HomePage> {
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 720),
-                    child: SlideIndexedStack(
+                    child: IndexedStack(
                       index: page,
                       children: [
                         DashboardPage(
@@ -294,24 +294,32 @@ class _HomePageState extends State<HomePage> {
               ),
       ),
       bottomNavigationBar: ready
-          ? NavigationBar(
-              selectedIndex: page,
-              onDestinationSelected: (value) => setState(() => page = value),
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.dashboard_outlined),
+          ? SmoothNavigationBar(
+              index: page,
+              onChanged: (value) => setState(() => page = value),
+              items: const [
+                SmoothNavItem(
+                  id: 'dashboard',
+                  icon: Icons.dashboard_outlined,
+                  selectedIcon: Icons.dashboard,
                   label: 'Dashboard',
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.calculate_outlined),
+                SmoothNavItem(
+                  id: 'calculator',
+                  icon: Icons.calculate_outlined,
+                  selectedIcon: Icons.calculate,
                   label: 'Calculator',
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.table_chart_outlined),
+                SmoothNavItem(
+                  id: 'spreadsheet',
+                  icon: Icons.table_chart_outlined,
+                  selectedIcon: Icons.table_chart,
                   label: 'Spreadsheet',
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.landscape_outlined),
+                SmoothNavItem(
+                  id: 'material',
+                  icon: Icons.landscape_outlined,
+                  selectedIcon: Icons.landscape,
                   label: 'Material',
                 ),
               ],
