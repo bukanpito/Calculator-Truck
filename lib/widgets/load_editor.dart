@@ -2,18 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../models/load_item.dart';
 import '../services/calculation.dart';
+import '../services/date_format.dart';
 import '../services/money_input_formatter.dart';
 
 class LoadEditor extends StatefulWidget {
   const LoadEditor({super.key, required this.item, required this.onSave});
   final LoadItem item;
-  final Future<void> Function(String, Calculation) onSave;
+  final Future<void> Function(String, Calculation, DateTime) onSave;
   @override
   State<LoadEditor> createState() => _LoadEditorState();
 }
 
 class _LoadEditorState extends State<LoadEditor> {
   final form = GlobalKey<FormState>();
+  late DateTime stamp = DateTime.parse(widget.item.createdAt);
   late final fields = [
     for (final text in [
       widget.item.material,
@@ -29,6 +31,51 @@ class _LoadEditorState extends State<LoadEditor> {
   ];
   bool busy = false;
   String? error;
+
+  Future<void> pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: stamp,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100, 12, 31),
+      helpText: 'Tanggal transaksi',
+      cancelText: 'Batal',
+      confirmText: 'Pilih',
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        stamp = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          stamp.hour,
+          stamp.minute,
+        );
+      });
+    }
+  }
+
+  Future<void> pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(stamp),
+      helpText: 'Waktu transaksi',
+      cancelText: 'Batal',
+      confirmText: 'Pilih',
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        stamp = DateTime(
+          stamp.year,
+          stamp.month,
+          stamp.day,
+          picked.hour,
+          picked.minute,
+        );
+      });
+    }
+  }
+
   @override
   void dispose() {
     for (final c in fields) {
@@ -76,6 +123,7 @@ class _LoadEditorState extends State<LoadEditor> {
           extra: parseMoney(fields[4].text, optional: true),
           destination: fields[5].text.trim(),
         ),
+        stamp,
       );
       if (mounted) Navigator.pop(context);
     } catch (_) {
@@ -99,7 +147,35 @@ class _LoadEditorState extends State<LoadEditor> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Tanggal dan waktu transaksi tetap dipertahankan.'),
+              const Text(
+                'Tanggal dan waktu bisa diubah. Transaksi akan pindah hari '
+                'sesuai tanggal baru.',
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: OutlinedButton.icon(
+                      onPressed: busy ? null : pickDate,
+                      icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                      label: Text(
+                        formattedDate(stamp),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: OutlinedButton.icon(
+                      onPressed: busy ? null : pickTime,
+                      icon: const Icon(Icons.schedule_outlined, size: 18),
+                      label: Text(clockText(stamp)),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 20),
               for (var i = 0; i < fields.length; i++)
                 Padding(

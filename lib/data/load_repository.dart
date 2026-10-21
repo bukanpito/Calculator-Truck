@@ -61,8 +61,9 @@ class LoadRepository {
   Future<void> update(
     LoadItem original,
     String material,
-    Calculation value,
-  ) async {
+    Calculation value, {
+    DateTime? createdAt,
+  }) async {
     if (material.trim().isEmpty ||
         material.trim().length > 80 ||
         value.shipping != 0 ||
@@ -70,6 +71,7 @@ class LoadRepository {
         value.destination.length > 200) {
       throw const FormatException('Data transaksi tidak valid.');
     }
+    final stamp = createdAt ?? DateTime.parse(original.createdAt);
     await db.transaction((txn) async {
       final previous = await txn.query(
         'loads',
@@ -94,6 +96,8 @@ class LoadRepository {
           'sale_price': value.salePrice,
           'rit_cost': value.ritCost,
           'destination': value.destination,
+          'created_at': stamp.toIso8601String(),
+          'local_date': localDate(stamp),
         },
         where: 'id = ?',
         whereArgs: [original.id],
@@ -143,19 +147,32 @@ class LoadRepository {
       whereArgs: [date],
       orderBy: 'id DESC',
     ))
-      LoadItem(
-        id: row['id'] as int,
-        material: row['material'] as String,
-        createdAt: row['created_at'] as String,
-        date: row['local_date'] as String,
-        value: Calculation(
-          volume: row['volume'] as int,
-          price: row['price'] as int,
-          extra: row['extra'] as int,
-          salePrice: row['sale_price'] as int?,
-          ritCost: row['rit_cost'] as int?,
-          destination: row['destination'] as String,
-        ),
-      ),
+      _fromRow(row),
   ];
+
+  /// Transactions from [start] to [end] (inclusive), newest day first.
+  Future<List<LoadItem>> forRange(DateTime start, DateTime end) async => [
+    for (final row in await db.query(
+      'loads',
+      where: 'local_date BETWEEN ? AND ? AND deleted = 0',
+      whereArgs: [localDate(start), localDate(end)],
+      orderBy: 'local_date DESC, id DESC',
+    ))
+      _fromRow(row),
+  ];
+
+  static LoadItem _fromRow(Map<String, Object?> row) => LoadItem(
+    id: row['id'] as int,
+    material: row['material'] as String,
+    createdAt: row['created_at'] as String,
+    date: row['local_date'] as String,
+    value: Calculation(
+      volume: row['volume'] as int,
+      price: row['price'] as int,
+      extra: row['extra'] as int,
+      salePrice: row['sale_price'] as int?,
+      ritCost: row['rit_cost'] as int?,
+      destination: row['destination'] as String,
+    ),
+  );
 }

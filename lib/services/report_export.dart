@@ -11,65 +11,68 @@ import 'package:share_plus/share_plus.dart';
 import '../models/load_item.dart';
 
 class ReportExport {
-  static List<List<Object?>> rows(List<LoadItem> loads) => [
-    [
-      'No.',
-      'Tanggal',
-      'Waktu',
-      'Material',
-      'Lokasi kirim',
-      'Volume m3',
-      'Modal per rit',
-      'Modal / m3',
-      'Biaya tambahan',
-      'Total modal',
-      'Jual / m3',
-      'Penjualan',
-      'Keuntungan',
-    ],
-    for (final (index, row) in loads.indexed)
+  static List<List<Object?>> rows(List<LoadItem> loads) {
+    final counters = <String, int>{};
+    return [
       [
-        index + 1,
-        row.date,
-        row.createdAt.substring(11, 16),
-        row.material,
-        row.value.destination,
-        row.value.volume / 1000000,
-        row.value.ritCost ?? row.value.subtotal,
-        row.value.costPerM3,
-        row.value.extra,
-        row.value.total,
-        row.value.salePrice,
-        row.value.sales,
-        row.value.profit,
+        'No.',
+        'Tanggal',
+        'Waktu',
+        'Material',
+        'Lokasi kirim',
+        'Volume m3',
+        'Modal per rit',
+        'Modal / m3',
+        'Biaya tambahan',
+        'Total modal',
+        'Jual / m3',
+        'Penjualan',
+        'Keuntungan',
       ],
-    [
-      'TOTAL',
-      '',
-      '',
-      '${loads.length} transaksi',
-      '',
-      loads.fold<int>(0, (s, r) => s + r.value.volume) / 1000000,
-      loads.fold<int>(0, (s, r) => s + (r.value.ritCost ?? r.value.subtotal)),
-      null,
-      loads.fold<int>(0, (s, r) => s + r.value.extra),
-      loads.fold<int>(0, (s, r) => s + r.value.total),
-      null,
-      loads.any((r) => r.value.sales != null)
-          ? loads.fold<int>(0, (s, r) => s + (r.value.sales ?? 0))
-          : null,
-      loads.any((r) => r.value.profit != null)
-          ? loads.fold<int>(0, (s, r) => s + (r.value.profit ?? 0))
-          : null,
-    ],
-  ];
+      for (final row in loads)
+        [
+          counters[row.date] = (counters[row.date] ?? 0) + 1,
+          row.date,
+          row.createdAt.substring(11, 16),
+          row.material,
+          row.value.destination,
+          row.value.volume / 1000000,
+          row.value.ritCost ?? row.value.subtotal,
+          row.value.costPerM3,
+          row.value.extra,
+          row.value.total,
+          row.value.salePrice,
+          row.value.sales,
+          row.value.profit,
+        ],
+      [
+        'TOTAL',
+        '',
+        '',
+        '${loads.length} transaksi',
+        '',
+        loads.fold<int>(0, (s, r) => s + r.value.volume) / 1000000,
+        loads.fold<int>(0, (s, r) => s + (r.value.ritCost ?? r.value.subtotal)),
+        null,
+        loads.fold<int>(0, (s, r) => s + r.value.extra),
+        loads.fold<int>(0, (s, r) => s + r.value.total),
+        null,
+        loads.any((r) => r.value.sales != null)
+            ? loads.fold<int>(0, (s, r) => s + (r.value.sales ?? 0))
+            : null,
+        loads.any((r) => r.value.profit != null)
+            ? loads.fold<int>(0, (s, r) => s + (r.value.profit ?? 0))
+            : null,
+      ],
+    ];
+  }
 
-  static Uint8List xlsx(String date, List<LoadItem> loads) {
+  static Uint8List xlsx(String label, List<LoadItem> loads) {
     final book = Excel.createExcel();
     final sheet = book['Muatan'];
     book.delete('Sheet1');
     sheet.appendRow([
-      TextCellValue('Material Tracker $date • Rupiah • volume m3'),
+      TextCellValue('Material Tracker $label • Rupiah • volume m3'),
     ]);
     for (final row in rows(loads)) {
       sheet.appendRow([
@@ -102,7 +105,7 @@ class ReportExport {
     return Uint8List.fromList(book.encode()!);
   }
 
-  static Future<Uint8List> pdf(String date, List<LoadItem> loads) async {
+  static Future<Uint8List> pdf(String label, List<LoadItem> loads) async {
     final doc = pw.Document();
     final data = rows(loads);
     doc.addPage(
@@ -111,7 +114,7 @@ class ReportExport {
         margin: const pw.EdgeInsets.all(24),
         build: (_) => [
           pw.Text(
-            'Material Tracker | Laporan $date',
+            'Material Tracker | Laporan $label',
             style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 12),
@@ -144,16 +147,17 @@ class ReportExport {
   }
 
   static Future<void> share(
-    String date,
+    String label,
     List<LoadItem> loads,
     bool asPdf, {
     required Rect origin,
   }) async {
     if (loads.isEmpty) throw StateError('Tidak ada transaksi untuk diekspor.');
-    final bytes = asPdf ? await pdf(date, loads) : xlsx(date, loads);
+    final bytes = asPdf ? await pdf(label, loads) : xlsx(label, loads);
     final directory = await getTemporaryDirectory();
+    final safeLabel = label.replaceAll(RegExp(r'[^0-9A-Za-z]+'), '_');
     final file = File(
-      '${directory.path}/MaterialTracker_$date.${asPdf ? 'pdf' : 'xlsx'}',
+      '${directory.path}/MaterialTracker_$safeLabel.${asPdf ? 'pdf' : 'xlsx'}',
     );
     await file.writeAsBytes(bytes, flush: true);
     final result = await SharePlus.instance.share(

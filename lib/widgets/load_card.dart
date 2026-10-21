@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/load_item.dart';
 import '../services/calculation.dart';
+import '../services/date_format.dart';
 
 class LoadCard extends StatelessWidget {
   const LoadCard({
@@ -10,9 +11,11 @@ class LoadCard extends StatelessWidget {
     required this.number,
     required this.onEdit,
     required this.onDelete,
+    this.showDate = false,
   });
   final LoadItem item;
   final int number;
+  final bool showDate;
   final VoidCallback onEdit;
   final Future<void> Function() onDelete;
 
@@ -48,7 +51,8 @@ class LoadCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            '#$number • ${item.createdAt.substring(11, 16)}',
+            '#$number${showDate ? ' • ${shortDate(item.date)}' : ''} • '
+            '${item.createdAt.substring(11, 16)}',
             style: Theme.of(context).textTheme.labelMedium,
           ),
           const SizedBox(height: 8),

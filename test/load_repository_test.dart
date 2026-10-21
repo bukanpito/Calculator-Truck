@@ -80,11 +80,42 @@ void main() {
       expect(edited.value.total, 205000);
       expect(edited.createdAt, rows.single.createdAt);
       expect((await repo.db.query('load_changes')).length, 1);
-      await LoadRepository(repo.db).delete(edited.id);
+      final moved = DateTime(2026, 1, 2, 14, 45);
+      await LoadRepository(repo.db).update(
+        edited,
+        'Pasir pindah',
+        Calculation(
+          volume: parseVolume('3'),
+          price: 0,
+          ritCost: 600000,
+          destination: 'Proyek Baru',
+        ),
+        createdAt: moved,
+      );
       expect(
         await LoadRepository(repo.db).forDate(localDate(DateTime.now())),
         isEmpty,
       );
+      final relocated = (await LoadRepository(repo.db).forDate('2026-01-02'))
+          .single;
+      expect(relocated.material, 'Pasir pindah');
+      expect(relocated.createdAt, moved.toIso8601String());
+      expect(relocated.value.total, 600000);
+      expect(relocated.value.destination, 'Proyek Baru');
+      expect(
+        (await LoadRepository(
+          repo.db,
+        ).forRange(DateTime(2026, 1, 1), DateTime(2026, 1, 3))).length,
+        1,
+      );
+      expect(
+        await LoadRepository(repo.db)
+            .forRange(DateTime(2026, 1, 3), DateTime(2026, 1, 5)),
+        isEmpty,
+      );
+      expect((await repo.db.query('load_changes')).length, 2);
+      await LoadRepository(repo.db).delete(relocated.id);
+      expect(await LoadRepository(repo.db).forDate('2026-01-02'), isEmpty);
       expect(await repo.load(), isEmpty);
       expect(await LoadRepository(repo.db).forDate('2000-01-01'), isEmpty);
     } finally {

@@ -14,7 +14,9 @@ bool isBackground(img.Pixel pixel) =>
     (pixel.b - 46).abs() <= 8;
 
 void main() {
-  final source = img.decodePng(File('assets/icon/app_icon.png').readAsBytesSync())!;
+  final source = img.decodePng(
+    File('assets/icon/app_icon.png').readAsBytesSync(),
+  )!;
 
   // Make a square 1024x1024 icon, padding with the brand green.
   final side = math.max(source.width, source.height);
@@ -73,6 +75,8 @@ void main() {
   File('assets/icon/app_icon_foreground.png')
       .writeAsBytesSync(img.encodePng(foreground));
 
-  stdout.writeln('art bounds: $left,$top ${right - left + 1}x${bottom - top + 1}');
+  stdout.writeln(
+    'art bounds: $left,$top ${right - left + 1}x${bottom - top + 1}',
+  );
   stdout.writeln('icon + foreground written');
 }

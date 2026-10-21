@@ -4,11 +4,13 @@ import 'calculator_page.dart';
 import 'dashboard_page.dart';
 import 'loads_page.dart';
 import 'materials_page.dart';
+import 'splash_screen.dart';
 import '../models/material_item.dart';
 import '../data/material_repository.dart';
 import '../data/load_repository.dart';
 import '../models/load_item.dart';
 import '../services/calculation.dart';
+import '../widgets/fade_indexed_stack.dart';
 import '../widgets/load_editor.dart';
 
 class HomePage extends StatefulWidget {
@@ -27,19 +29,47 @@ class _HomePageState extends State<HomePage> {
   String? error;
   List<LoadItem> todayLoads = [], selectedLoads = [];
   DateTime selectedDate = DateTime.now();
+  int rangeDays = 1;
   bool dashboardReset = false;
+
+  DateTime get rangeStart => DateTime(
+    selectedDate.year,
+    selectedDate.month,
+    selectedDate.day - (rangeDays - 1),
+  );
 
   Future<void> refreshLoads() async {
     final repo = LoadRepository(repository!.db);
     final today = await repo.forDate(localDate(DateTime.now()));
     final resetId = await repo.resetId(localDate(DateTime.now()));
-    final selected = await repo.forDate(localDate(selectedDate));
+    final selected = await repo.forRange(rangeStart, selectedDate);
     if (mounted) {
       setState(() {
         dashboardReset = resetId != null;
         todayLoads = today.where((row) => row.id > (resetId ?? 0)).toList();
         selectedLoads = selected;
       });
+    }
+  }
+
+  Future<void> changeRange({DateTime? date, int? days}) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      if (date != null) selectedDate = date;
+      if (days != null) rangeDays = days;
+    });
+    try {
+      final rows = await LoadRepository(repository!.db)
+          .forRange(rangeStart, selectedDate);
+      if (mounted) setState(() => selectedLoads = rows);
+    } catch (_) {
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Gagal membaca transaksi. Coba kembali.'),
+          ),
+        );
+      }
     }
   }
 
@@ -119,177 +149,174 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Material Tracker')),
-    body: loading
-        ? const Center(child: CircularProgressIndicator())
-        : error != null
-        ? Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(error!),
-                TextButton(
-                  onPressed: initialize,
-                  child: const Text('Coba lagi'),
-                ),
-              ],
-            ),
-          )
-        : AbsorbPointer(
-            absorbing: busy,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 720),
-                child: IndexedStack(
-                  index: page,
+  Widget build(BuildContext context) {
+    final ready = !loading && error == null;
+    return Scaffold(
+      appBar: ready ? AppBar(title: const Text('Material Tracker')) : null,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: loading
+            ? const SplashScreen(key: ValueKey('splash'))
+            : error != null
+            ? Center(
+                key: const ValueKey('error'),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    DashboardPage(
-                      reset: dashboardReset,
-                      onReset: () async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        final confirmed = await showDialog<bool>(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: const Text('Reset ringkasan?'),
-                            content: const Text(
-                              'Ringkasan dimulai dari nol. Semua transaksi tetap tersimpan di Spreadsheet. Muatan baru akan masuk ringkasan sejak reset.',
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Batal'),
-                              ),
-                              FilledButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text('Reset ringkasan'),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (confirmed != true) return;
-                        try {
-                          await LoadRepository(repository!.db)
-                              .resetDashboard(localDate(DateTime.now()));
-                          await refreshLoads();
-                        } catch (_) {
-                          if (mounted) {
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('Reset gagal. Coba kembali.'),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      loads: todayLoads,
-                      onCalculate: () => setState(() => page = 1),
+                    Text(error!),
+                    TextButton(
+                      onPressed: initialize,
+                      child: const Text('Coba lagi'),
                     ),
-                    CalculatorPage(
-                      materials: List.of(materials),
-                      onSave: saveLoad,
-                    ),
-                    LoadsPage(
-                      onDelete: (item) async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        try {
-                          await LoadRepository(repository!.db).delete(item.id);
-                          await refreshLoads();
-                        } catch (_) {
-                          if (mounted) {
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Tidak dapat menghapus atau memperbarui daftar. Coba muat ulang.',
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      onEdit: (item) => showDialog<void>(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (_) => LoadEditor(
-                          item: item,
-                          onSave: (name, value) async {
+                  ],
+                ),
+              )
+            : AbsorbPointer(
+                key: const ValueKey('pages'),
+                absorbing: busy,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: FadeIndexedStack(
+                      index: page,
+                      children: [
+                        DashboardPage(
+                          reset: dashboardReset,
+                          onReset: () async {
                             final messenger = ScaffoldMessenger.of(context);
-                            await LoadRepository(repository!.db)
-                                .update(item, name, value);
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Reset ringkasan?'),
+                                content: const Text(
+                                  'Ringkasan dimulai dari nol. Semua transaksi tetap tersimpan di Spreadsheet. Muatan baru akan masuk ringkasan sejak reset.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text('Batal'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text('Reset ringkasan'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirmed != true) return;
                             try {
+                              await LoadRepository(repository!.db)
+                                  .resetDashboard(localDate(DateTime.now()));
+                              await refreshLoads();
+                            } catch (_) {
+                              if (mounted) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Reset gagal. Coba kembali.'),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          loads: todayLoads,
+                          onCalculate: () => setState(() => page = 1),
+                        ),
+                        CalculatorPage(
+                          materials: List.of(materials),
+                          onSave: saveLoad,
+                        ),
+                        LoadsPage(
+                          onDelete: (item) async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            try {
+                              await LoadRepository(repository!.db)
+                                  .delete(item.id);
                               await refreshLoads();
                             } catch (_) {
                               if (mounted) {
                                 messenger.showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                      'Perubahan tersimpan. Buka ulang untuk memperbarui tampilan.',
+                                      'Tidak dapat menghapus atau memperbarui daftar. Coba muat ulang.',
                                     ),
                                   ),
                                 );
                               }
                             }
                           },
+                          onEdit: (item) => showDialog<void>(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (_) => LoadEditor(
+                              item: item,
+                              onSave: (name, value, stamp) async {
+                                final messenger = ScaffoldMessenger.of(context);
+                                await LoadRepository(
+                                  repository!.db,
+                                ).update(item, name, value, createdAt: stamp);
+                                try {
+                                  await refreshLoads();
+                                } catch (_) {
+                                  if (mounted) {
+                                    messenger.showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Perubahan tersimpan. Buka ulang untuk memperbarui tampilan.',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                          ),
+                          loads: selectedLoads,
+                          date: selectedDate,
+                          days: rangeDays,
+                          onDate: (date) => changeRange(date: date),
+                          onDays: (days) => changeRange(days: days),
                         ),
-                      ),
-                      loads: selectedLoads,
-                      date: selectedDate,
-                      onDate: (date) async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        try {
-                          final rows = await LoadRepository(repository!.db)
-                              .forDate(localDate(date));
-                          if (mounted) {
-                            setState(() {
-                              selectedDate = date;
-                              selectedLoads = rows;
-                            });
-                          }
-                        } catch (_) {
-                          if (mounted) {
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Gagal membaca transaksi. Coba kembali.',
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                      },
+                        MaterialsPage(
+                          materials: materials,
+                          onSave: (item) =>
+                              mutate(() => repository!.save(item)),
+                          onDelete: (item) =>
+                              mutate(() => repository!.delete(item.id)),
+                        ),
+                      ],
                     ),
-                    MaterialsPage(
-                      materials: materials,
-                      onSave: (item) => mutate(() => repository!.save(item)),
-                      onDelete: (item) =>
-                          mutate(() => repository!.delete(item.id)),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-    bottomNavigationBar: NavigationBar(
-      selectedIndex: page,
-      onDestinationSelected: (value) => setState(() => page = value),
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.dashboard_outlined),
-          label: 'Dashboard',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.calculate_outlined),
-          label: 'Calculator',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.table_chart_outlined),
-          label: 'Spreadsheet',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.landscape_outlined),
-          label: 'Material',
-        ),
-      ],
-    ),
-  );
+      ),
+      bottomNavigationBar: ready
+          ? NavigationBar(
+              selectedIndex: page,
+              onDestinationSelected: (value) => setState(() => page = value),
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.dashboard_outlined),
+                  label: 'Dashboard',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.calculate_outlined),
+                  label: 'Calculator',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.table_chart_outlined),
+                  label: 'Spreadsheet',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.landscape_outlined),
+                  label: 'Material',
+                ),
+              ],
+            )
+          : null,
+    );
+  }
 }
