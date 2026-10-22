@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter/widgets.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -24,13 +27,21 @@ class MaterialRepository {
     await addRitColumns(db);
   }
 
+  static Future<String> _folder(DatabaseFactory driver) async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      final dir = await getApplicationSupportDirectory();
+      await dir.create(recursive: true);
+      return dir.path;
+    }
+    return driver.getDatabasesPath();
+  }
+
   static Future<MaterialRepository> open({
     DatabaseFactory? factory,
     String? file,
   }) async {
     final driver = factory ?? databaseFactory;
-    final location =
-        file ?? join(await driver.getDatabasesPath(), 'materialtrack.db');
+    final location = file ?? join(await _folder(driver), 'materialtrack.db');
     final db = await driver.openDatabase(
       location,
       options: OpenDatabaseOptions(
