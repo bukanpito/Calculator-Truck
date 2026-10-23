@@ -1,8 +1,8 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' show Rect;
 
 import 'package:excel/excel.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
@@ -146,7 +146,7 @@ class ReportExport {
     return doc.save();
   }
 
-  static Future<void> share(
+  static Future<String?> share(
     String label,
     List<LoadItem> loads,
     bool asPdf, {
@@ -156,9 +156,22 @@ class ReportExport {
     final bytes = asPdf ? await pdf(label, loads) : xlsx(label, loads);
     final directory = await getTemporaryDirectory();
     final safeLabel = label.replaceAll(RegExp(r'[^0-9A-Za-z]+'), '_');
-    final file = File(
-      '${directory.path}/MaterialTracker_$safeLabel.${asPdf ? 'pdf' : 'xlsx'}',
-    );
+    final name = 'MaterialTracker_$safeLabel.${asPdf ? 'pdf' : 'xlsx'}';
+
+    if (!kIsWeb &&
+        (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+      final folder = await getDownloadsDirectory() ?? directory;
+      final file = File('${folder.path}/$name');
+      await file.writeAsBytes(bytes, flush: true);
+      if (Platform.isWindows) {
+        await Process.run('explorer.exe', ['/select,${file.path}']);
+      } else if (Platform.isMacOS) {
+        await Process.run('open', ['-R', file.path]);
+      }
+      return file.path;
+    }
+
+    final file = File('${directory.path}/$name');
     await file.writeAsBytes(bytes, flush: true);
     final result = await SharePlus.instance.share(
       ShareParams(files: [XFile(file.path)], sharePositionOrigin: origin),
@@ -166,5 +179,6 @@ class ReportExport {
     if (result.status == ShareResultStatus.unavailable) {
       throw StateError('Berbagi file tidak tersedia.');
     }
+    return null;
   }
 }

@@ -45,14 +45,23 @@ class LoadsPage extends StatelessWidget {
   }
 
   Future<void> export(BuildContext context, bool pdf) async {
-    final box = context.findRenderObject() as RenderBox;
+    final box = context.findRenderObject();
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ReportExport.share(
+      final saved = await ReportExport.share(
         label,
         List.of(loads),
         pdf,
-        origin: box.localToGlobal(Offset.zero) & box.size,
+        origin: box is RenderBox
+            ? box.localToGlobal(Offset.zero) & box.size
+            : Rect.zero,
+      );
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            saved == null ? 'Laporan siap dibagikan.' : 'Tersimpan: $saved',
+          ),
+        ),
       );
     } catch (_) {
       messenger.showSnackBar(
